@@ -77,7 +77,7 @@ class Element(Visibility):
         for stack_frame in stack_frames:
             code_path = pathlib.Path(stack_frame.filename)
             if all(module_dir not in code_path.parents for module_dir in INTERNAL_MODULE_DIRS):
-                # The frame is not likely in the non-user module
+                # The frame is likely in a user module
                 return stack_frame
         return None
 
