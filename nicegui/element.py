@@ -62,8 +62,11 @@ class Element(Visibility):
         if caller_stack is not None:
             # self.caller_filename = caller_stack.filename
             # self.caller_lineno = caller_stack.lineno
-            self._props["data-caller_filename"] = caller_stack.filename
-            self._props["data-caller_lineno"] = caller_stack.lineno
+            caller_file_path = pathlib.Path(caller_stack.filename)
+            if caller_file_path.exists():
+                self._props["data-caller_filename"] = str(caller_file_path.resolve())
+                # self._props["data-caller_filename"] = caller_file_path.resolve().as_uri()
+                self._props["data-caller_lineno"] = caller_stack.lineno
 
         self.tailwind = Tailwind(self)
 
