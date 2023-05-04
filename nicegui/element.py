@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import inspect
+import pathlib
 import re
+import site
 import warnings
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
@@ -19,6 +22,8 @@ if TYPE_CHECKING:
     from .client import Client
 
 PROPS_PATTERN = re.compile(r'([\w\-]+)(?:=(?:("[^"\\]*(?:\\.[^"\\]*)*")|([\w\-.%:\/]+)))?(?:$|\s)')
+
+INTERNAL_MODULE_DIRS = [pathlib.Path(p) for p in site.getsitepackages()] + [pathlib.Path(__file__).parent]
 
 
 class Element(Visibility):
@@ -52,11 +57,29 @@ class Element(Visibility):
             self.parent_slot = slot_stack[-1]
             self.parent_slot.children.append(self)
 
+        # add caller information to props to debug
+        caller_stack = self.get_caller_stack_frame()
+        if caller_stack is not None:
+            # self.caller_filename = caller_stack.filename
+            # self.caller_lineno = caller_stack.lineno
+            self._props["data-caller_filename"] = caller_stack.filename
+            self._props["data-caller_lineno"] = caller_stack.lineno
+
         self.tailwind = Tailwind(self)
 
         outbox.enqueue_update(self)
         if self.parent_slot:
             outbox.enqueue_update(self.parent_slot.parent)
+
+    @staticmethod
+    def get_caller_stack_frame():
+        stack_frames = inspect.stack()
+        for stack_frame in stack_frames:
+            code_path = pathlib.Path(stack_frame.filename)
+            if all(module_dir not in code_path.parents for module_dir in INTERNAL_MODULE_DIRS):
+                # The frame is not likely in the non-user module
+                return stack_frame
+        return None
 
     def add_slot(self, name: str, template: Optional[str] = None) -> Slot:
         """Add a slot to the element.
